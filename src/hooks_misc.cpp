@@ -628,6 +628,9 @@ public:
 
 	bool validate() override
 	{
+		// FIX: If Arcade Scoring is enabled, disable online mode.
+		if (Settings::RestoreArcadeScoring)
+			return false;
 		return !Settings::DemonwareServerOverride.empty();
 	}
 
@@ -982,3 +985,35 @@ public:
 	static EnableLevelSelect instance;
 };
 EnableLevelSelect EnableLevelSelect::instance;
+
+class RestoreArcadeScoringHook : public Hook
+{
+public:
+	std::string_view description() override
+	{
+		return "RestoreArcadeScoring";
+	}
+
+	bool validate() override
+	{
+		return Settings::RestoreArcadeScoring;
+	}
+
+	bool apply() override
+	{
+		// 004f2a6a -> B9 EE 02 00 00 (MOV ECX, 0x2ee)
+		// B9 is a 1-byte opcode, so the actual number starts at 0x004F2A6A + 1 = 0x004F2A6B.
+		// We subtract the base address (0x00400000) to get the offset for the wrapper: 0xF2A6B
+		constexpr int NormalCarScore_Addr = 0xF2A6B;
+
+		// Patch the normal car passing score from 750 to 1500
+		Memory::VP::Patch(Module::exe_ptr(NormalCarScore_Addr), int(1500));
+
+		spdlog::info("RestoreArcadeScoring: Normal car score patched to 1500.");
+
+		return true;
+	}
+
+	static RestoreArcadeScoringHook instance;
+};
+RestoreArcadeScoringHook RestoreArcadeScoringHook::instance;
