@@ -33,6 +33,7 @@ Online games are regularly setup on the OutRun2006Tweaks discord: https://discor
 - In-game HUD can be optionally toggled via bindable keypress
 - Manual Transmission (MT) can be set as the default for C2C menus
 - Passing all the C2C missions might unlock something new 🐱
+- NEW: Restore arcade scoring of 1500 pts per normal car (offline only)
 
 **Bugfixes:**
 - Built-in framelimiter to prevent speedups, framerate can be partially unlocked with game running at 60FPS internally
