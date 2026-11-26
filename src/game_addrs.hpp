@@ -192,6 +192,7 @@ namespace Game
 	inline fn_1arg PrjSndRequest = nullptr;
 	inline fn_1arg SetSndQueue = nullptr;
 
+	inline fn_1arg_int SwitchOn = nullptr;
 	inline fn_1arg_int SwitchNow = nullptr;
 	inline int(*Sumo_CalcSteerSensitivity)(int cur, int prev) = nullptr;
 
@@ -424,6 +425,7 @@ namespace Game
 		PrjSndRequest = Module::fn_ptr<fn_1arg>(0x249F0);
 		SetSndQueue = Module::fn_ptr<fn_1arg>(0x24940);
 
+		SwitchOn = Module::fn_ptr<fn_1arg_int>(0x536F0);
 		SwitchNow = Module::fn_ptr<fn_1arg_int>(0x536C0);
 		Sumo_CalcSteerSensitivity = Module::fn_ptr(0x537C0, Sumo_CalcSteerSensitivity);
 

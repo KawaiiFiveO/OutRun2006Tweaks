@@ -39,8 +39,12 @@ namespace Settings
 	Setting<bool> ProtectLoginData{ "Misc", "ProtectLoginData", true,
 		"Protects online login data by removing it from savegame files & encrypting against your Windows user account, making "
 		"sure your login details won't be exposed if you share savegame files." };
+	Setting<bool> RestoreArcadeScoring{ "Misc", "RestoreArcadeScoring", false,
+		"Sets score for passing a normal car to 1500, as in the arcade version. Disables online play." };
 	Setting<bool> DefaultManualTransmission{ "Controls", "DefaultManualTransmission", false,
 		"Makes Manual Transmission the default selection in C2C menus." };
+	Setting<bool> SwapGearShiftDirection{ "Controls", "SwapGearShiftDirection", false,
+		"Swaps Gear Up and Gear Down binds while driving; menus keep the original binds." };
 
 	Setting<bool> AutoDetectResolution{ "Window", "AutoDetectResolution", true,
 		"If the outrun2006.ini file doesn't exist, changes games default 640x480 resolution to primary display resolution instead." };
@@ -374,6 +378,48 @@ public:
 };
 DefaultManualTransmission DefaultManualTransmission::instance;
 
+class SwapGearShiftDirection : public Hook
+{
+	static constexpr uint32_t GearUpMask = 1 << int(SwitchId::GearUp);
+	static constexpr uint32_t GearDownMask = 1 << int(SwitchId::GearDown);
+
+	// Menus also read the gear switches (eg. name entry scrolls letters with them),
+	// so only the gearbox's own SwitchOn calls are redirected here.
+	// The setting is read on every call, so it can be toggled while the game runs.
+	static int __cdecl GearboxSwitchOn_dest(uint32_t mask)
+	{
+		if (Settings::SwapGearShiftDirection)
+		{
+			if (mask == GearUpMask)
+				mask = GearDownMask;
+			else if (mask == GearDownMask)
+				mask = GearUpMask;
+		}
+		return Game::SwitchOn(mask);
+	}
+
+public:
+	std::string_view description() override
+	{
+		return "SwapGearShiftDirection";
+	}
+
+	bool apply() override
+	{
+		// Car gearbox update (0x5024C0) checks SwitchOn(GearUp) to shift up, then SwitchOn(GearDown) to shift down
+		constexpr int Gearbox_SwitchOnGearUp_CallAddr = 0x1024EB;
+		constexpr int Gearbox_SwitchOnGearDown_CallAddr = 0x102528;
+
+		Memory::VP::InjectHook(Module::exe_ptr(Gearbox_SwitchOnGearUp_CallAddr), GearboxSwitchOn_dest, Memory::HookType::Call);
+		Memory::VP::InjectHook(Module::exe_ptr(Gearbox_SwitchOnGearDown_CallAddr), GearboxSwitchOn_dest, Memory::HookType::Call);
+
+		return true;
+	}
+
+	static SwapGearShiftDirection instance;
+};
+SwapGearShiftDirection SwapGearShiftDirection::instance;
+
 class EnableHollyCourse2 : public Hook
 {
 	// TODO: Percentage might not be affected by the holly 2 missions atm, letting it go above 100% might be neat
@@ -648,6 +694,9 @@ public:
 
 	bool validate() override
 	{
+		// Arcade scoring isn't allowed online, leave the game pointed at the original (offline) servers
+		if (Settings::RestoreArcadeScoring)
+			return false;
 		return !Settings::DemonwareServerOverride.get().empty();
 	}
 
@@ -1012,3 +1061,37 @@ public:
 	static EnableLevelSelect instance;
 };
 EnableLevelSelect EnableLevelSelect::instance;
+
+class RestoreArcadeScoring : public Hook
+{
+public:
+	std::string_view description() override
+	{
+		return "RestoreArcadeScoring";
+	}
+
+	bool validate() override
+	{
+		return Settings::RestoreArcadeScoring;
+	}
+
+	void declare_settings() override
+	{
+		// DemonwareServerOverride also checks this during startup
+		Settings::RestoreArcadeScoring.needs_restart();
+	}
+
+	bool apply() override
+	{
+		// 0x4F2A6A: MOV ECX, 0x2EE (750), the score for passing a normal car
+		// patch the immediate after the 1-byte B9 opcode
+		constexpr int NormalCarScore_Addr = 0xF2A6B;
+
+		Memory::VP::Patch(Module::exe_ptr(NormalCarScore_Addr), int(1500));
+
+		return true;
+	}
+
+	static RestoreArcadeScoring instance;
+};
+RestoreArcadeScoring RestoreArcadeScoring::instance;

@@ -47,6 +47,8 @@ Online games are regularly setup on the **OutRun2006Tweaks Discord**: https://di
 - Allows randomizing the set of highway animations to use, instead of only using the set for the game mode being played
 - In-game HUD can be optionally toggled via bindable keypress
 - Manual Transmission (MT) can be set as the default for C2C menus
+- Gear Up and Gear Down binds can be swapped for driving only
+- Score for passing a normal car can be restored to the arcade's 1500 points, with online play disabled
 - Passing all the C2C missions might unlock something new 🐱
 
 **Enhancements:**
